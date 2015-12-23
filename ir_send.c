@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
+#include <time.h>
 
 #define GPIO_LED 1
-#define TRANSMISSION_INTERVAL 3
 #define END_BYTE 168
 
 void printChar(char* tag, char val)
@@ -23,18 +23,23 @@ void printChar(char* tag, char val)
 }
 
 int main(int argc, char *argv[]){
+	setbuf(stdout, NULL);
+	if(argc <= 2){
+		fprintf(stderr, "Missing (some) arguments: transmission interval (delay), input file name");
+		return(1);
+	}
+
+	const int TRANSMISSION_INTERVAL = atoi(argv[1]);
+	const char* filename_input = argv[2];
+
 	//init wiringpi
 	wiringPiSetup();
 	pinMode(GPIO_LED, OUTPUT);
 	digitalWrite(GPIO_LED, LOW);
 
 	FILE* input_file;
-	printf("argc:%d\n",argc);
-	if(argc > 1) {
-		input_file = fopen(argv[1], "r");
-	}else{
-		input_file = fopen("send.c", "r");
-	}
+	input_file = fopen(filename_input, "r");
+
 	assert(input_file != NULL);
 	unsigned int read_checksum = 0;
 
@@ -57,6 +62,7 @@ int main(int argc, char *argv[]){
 	//Signal begin, and start writing
 	digitalWrite(GPIO_LED, HIGH);
 	delay(3*TRANSMISSION_INTERVAL);
+	clock_t time_start = clock();
 	while(total_sent_bytes < total_read_file)
 	{
 		unsigned char to_send_byte  = file_bytes[total_sent_bytes];
@@ -78,7 +84,15 @@ int main(int argc, char *argv[]){
 		}
 		total_sent_bytes++;
 	}
+	clock_t time_end = clock();
 	printf("done\n");
+
+	//TODO: time doesn't work properly
+	double time_elapsed = ((double)time_end - time_start) / CLOCKS_PER_SEC * 1000;
+	printf("time=%f\n", time_elapsed);
+	printf("bits sent=%d \n", total_sent_bits);
+	float bits_per_second = total_sent_bits / time_elapsed;
+	printf("bitrate=%f bps\n", bits_per_second);
 
 	assert(total_sent_bits == total_sent_bytes*8);
 	assert(total_sent_bytes == total_read_file);

@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #define GPIO_IR_RECEIVER 2
-#define TRANSMISSION_INTERVAL 3
 #define END_BYTE 168
 
 unsigned char received_bytes[300*1024];
@@ -49,6 +48,15 @@ receive_bit(unsigned char bit)
 
 int main(int argc, char *argv[]){
 	setbuf(stdout, NULL);
+	if(argc <= 1){
+		fprintf(stderr, "provide a transmission interval argument (delay)");
+		return(1);
+	}
+
+	const int TRANSMISSION_INTERVAL = atoi(argv[1]);
+	if(TRANSMISSION_INTERVAL % 2 != 0){
+		printf("warning: non-even transmission interval"); //currently only sleeping for Integer millis, division by 2 should give integers
+	}
 	//init wiringpi
 	wiringPiSetup();
 	pinMode(GPIO_IR_RECEIVER, INPUT);
@@ -60,6 +68,7 @@ int main(int argc, char *argv[]){
 	printf("waiting...\n");
 	//fflush(stdout);
 	while(! digitalRead(GPIO_IR_RECEIVER));
+	printf("starting with TRANSMISSION_INTERVAL=%d\n", TRANSMISSION_INTERVAL);
 	delay(3*TRANSMISSION_INTERVAL);
 	int done = 0;
 
